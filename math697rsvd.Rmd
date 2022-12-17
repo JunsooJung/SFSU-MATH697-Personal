@@ -1,0 +1,44 @@
+---
+title: "Untitled"
+output: html_document
+date: "2022-11-14"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+```{r}
+library(rsvd)
+data(tiger)
+library(microbenchmark)
+```
+
+```{r}
+set.seed(0)
+A= Matrix(320,160)
+rank = rankMatrix(A)
+k=1/4 * rank
+nu = k
+nv = k
+s <- rsvd(A, k)
+reconA = s$u %*% diag(s$d) %*% t(s$v) 
+```
+
+```{r}
+# Display orginal and reconstrucuted image
+par(mfrow=c(1,2))
+image(A, col = gray((0:255)/255))
+image(reconA, col = gray((0:255)/255))
+```
+```{r}
+timing_svd <- microbenchmark(
+  'SVD' = svd(A, nu, nv),
+  'rSVD' = rsvd(reconA, k),
+  times=10)
+
+print(timing_svd, unit='s')
+
+```
+

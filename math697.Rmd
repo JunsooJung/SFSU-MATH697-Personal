@@ -1,0 +1,153 @@
+---
+title: "JL Lemma"
+author: "Junsoo Jung"
+date: '2022 10 25 '
+output:
+  html_document: default
+  pdf_document: default
+  word_document: default
+---
+
+#### JL lemma R version
+
+### Libraries
+
+```{r}
+library(Matrix)
+library(microbenchmark)
+```
+
+
+```{r}
+#Fill matrix w/ random digit
+Matrix = function(m,n){
+  A = matrix(sample(0, m*n, replace=TRUE), nrow=m, ncol=n)
+  rank = rankMatrix(A)
+  
+  fillcolumn = function(){
+    c = sample(1:4, 1, replace = T)
+    if (c==1){
+      a = sample(-1000:1, 1, replace = T)
+      b = sample(1:1000, 1, replace = T)
+      column = runif(m, min = a, max = b-a)
+    }else if (c==2){
+      a = -10+20*runif(1)
+      b = 2*runif(1)
+      column = rnorm(m, a, b)
+    }else if (c==3){
+      b = 2+2*runif(1)
+      column = rgamma(m, shape = b, scale = b)
+    }else if (c==4){
+      a = 0.5+2*runif(1)
+      column = rexp(m,a)
+    }
+    return(column)
+  }
+  for (i in 1:n){
+    A[,i]=fillcolumn()
+  }
+  return(A)
+}
+```
+
+
+
+
+```{r}
+#distance
+distance = function(A){
+  n = ncol(A)
+  dist = list()
+  for (i in 1:n){
+    u = A[,i]
+    for (j in i:n){
+      if(i!=j){
+        dist = append(dist, norm((u-A[,j]),type = "2")^2)
+      }
+    }
+  }
+  return(dist)
+}
+```
+
+### 
+
+```{r}
+#JLlemma
+jllemma  = function(A,epsilon){
+  m = nrow(A)
+  n = ncol(A)
+  k = ceiling((24*log(n)/(3*epsilon**2-2*epsilon**3)))
+  z = matrix(rnorm(k*m),nrow = k,ncol = m)
+  dist = list()
+  for(i in 1:n){
+    u = A[,i]
+    for(j in i:n){
+      if(i!=j){
+        dist = append(dist, 1/k* norm(z%*%(u-A[,j]), type = "2")^2)
+      }
+    }
+  }
+  return(dist)
+}
+```
+
+```{r}
+test = function(A,epsilon,dist,nexpts){
+  matdist = distance(A)
+  JLsum = vector(mode="list",length = length(matdist))
+  for (i in 1:length(matdist)){
+    JLsum[i]=0
+  }
+  sum = Map("+", JLsum, jllemma(A,epsilon))
+  upper = 1+epsilon
+  lower = 1-epsilon
+  dscale = Map("/", sum, (lapply(matdist,"*",nexpts)))
+  
+  return(c((sum(dscale <= upper)+sum(dscale >= lower)/length(dist)),dscale))
+}
+```
+
+ for (i in 1:length(nexpts)){
+    JLsum[i] = jllemma(A,epsilon)[i]
+  }
+
+
+```{r}
+#Run code
+#variables loading
+set.seed(0)
+epsilon= 0.2
+upper = 1+epsilon
+lower = 1-epsilon
+A= Matrix(160,80)
+rank = rankMatrix(A)
+
+```
+
+```{r}
+
+start_time <- Sys.time()
+result = test(A,0.2,distance(A),1)
+end_time <- Sys.time()
+
+end_time - start_time
+
+val = result[1]
+
+lens = length(scale)
+plot(unlist(result[-1]),ylab = "JL result",ylim = c(1-2*epsilon, 1+2*epsilon))
+abline(h = upper, col ="blue")
+abline(h = lower, col ="blue")
+```
+
+```{r}
+timing_jl <- microbenchmark(
+  'JL Lemma' = test(A,0.2,distance(A),1),
+  times=10)
+
+print(timing_jl, unit='s')
+```
+
+
+
